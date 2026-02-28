@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Phishing Detective</title>
+
+    <!-- Chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+   <style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+body{
+    background: linear-gradient(-45deg,#0f172a,#1e293b,#0f2027,#1e3a8a);
+    background-size:400% 400%;
+    animation: gradientBG 15s ease infinite;
+    color:white;
+    padding:20px;
+}
+
+@keyframes gradientBG{
+    0%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+    100%{background-position:0% 50%;}
+}
+
+h1{
+    text-align:center;
+    margin-bottom:20px;
+    animation: fadeDown 1s ease;
+}
+
+@keyframes fadeDown{
+    from{opacity:0; transform:translateY(-30px);}
+    to{opacity:1; transform:translateY(0);}
+}
+
+.card{
+    background: rgba(2,6,23,0.75);
+    backdrop-filter: blur(12px);
+    padding:25px;
+    border-radius:16px;
+    margin:25px 0;
+    border:1px solid rgba(255,255,255,0.1);
+    box-shadow:0 15px 35px rgba(0,0,0,0.4);
+    transition:0.4s;
+    animation: fadeUp 1s ease;
+}
+
+.card:hover{
+    transform: translateY(-8px);
+    box-shadow:0 20px 45px rgba(37,99,235,0.4);
+}
+
+@keyframes fadeUp{
+    from{opacity:0; transform:translateY(40px);}
+    to{opacity:1; transform:translateY(0);}
+}
+
+textarea,input{
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border-radius:10px;
+    border:1px solid #334155;
+    background:#0f172a;
+    color:white;
+    transition:0.3s;
+}
+
+textarea:focus,input:focus{
+    outline:none;
+    border-color:#3b82f6;
+    box-shadow:0 0 10px #2563eb;
+}
+
+button{
+    margin-top:15px;
+    padding:12px 22px;
+    background:linear-gradient(45deg,#2563eb,#3b82f6);
+    color:white;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+    transition:0.4s;
+}
+
+button:hover{
+    transform:scale(1.08);
+    box-shadow:0 0 15px #3b82f6;
+}
+
+.safe{color:#22c55e;}
+.danger{color:#ef4444;}
+
+.info-box{
+    background:#1e293b;
+    padding:12px;
+    border-radius:10px;
+    margin-top:12px;
+    border-left:4px solid #3b82f6;
+    animation: fadeIn 0.7s ease;
+}
+
+@keyframes fadeIn{
+    from{opacity:0;}
+    to{opacity:1;}
+}
+
+hr{
+    border:0;
+    border-top:1px solid #334155;
+    margin:10px 0;
+}
+
+#chatBox{
+    background:#0f172a;
+    border:1px solid #1e293b;
+    padding:15px;
+    border-radius:12px;
+    height:220px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+.msg{
+    padding:10px 14px;
+    border-radius:15px;
+    max-width:80%;
+    animation: pop 0.4s ease;
+}
+
+@keyframes pop{
+    from{transform:scale(0.8); opacity:0;}
+    to{transform:scale(1); opacity:1;}
+}
+
+.user-msg{
+    background:#1e293b;
+    align-self:flex-end;
+    color:#60a5fa;
+}
+
+.bot-msg{
+    background:linear-gradient(45deg,#2563eb,#3b82f6);
+    align-self:flex-start;
+    color:white;
+}
+/* Floating Button */
+#chat-widget-button {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(45deg, #2563eb, #3b82f6);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.5);
+    z-index: 1000;
+    transition: 0.3s;
+}
+
+#chat-widget-button:hover { transform: scale(1.1); }
+
+/* Floating Chat Window */
+#chat-window {
+    position: fixed;
+    bottom: 100px;
+    right: 25px;
+    width: 350px;
+    height: 450px;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    z-index: 1000;
+    overflow: hidden;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.chat-header {
+    background: #1e293b;
+    padding: 15px;
+    font-weight: bold;
+    border-bottom: 1px solid #334155;
+    display: flex;
+    justify-content: space-between;
+}
+
+#chatBox {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: transparent; /* Override previous style */
+    height: auto; 
+}
+
+.chat-input-area {
+    padding: 15px;
+    background: #1e293b;
+    display: flex;
+    gap: 8px;
+}
+
+.chat-input-area input { margin-top: 0; flex: 1; }
+.chat-input-area button { margin-top: 0; }
+</style>
+</head>
+
+<body>
+
+<h1 align="center">🛡️ AI Phishing Detective</h1>
+
+<div class="card">
+    <h2>Analyze</h2>
+    <textarea id="email" placeholder="Email Content"></textarea>
+    <textarea id="spear" placeholder="Spear Phishing Content (optional)"></textarea>
+    <textarea id="whaling" placeholder="Whaling Content (optional)"></textarea>
+    <textarea id="clone" placeholder="Clone Phishing Content (optional)"></textarea>
+    <input id="sender" placeholder="Sender Email">
+    <input id="url" placeholder="URL (e.g. http://suspicious-site.com)">
+    <button onclick="analyze()">Analyze Now</button>
+    <div id="result"></div>
+</div>
+
+<div class="card">
+    <h2>Dashboard</h2>
+    <canvas id="chartCanvas"></canvas>
+</div>
+
+<div class="card">
+    <h2>🌍 Attacker Location Map</h2>
+    <div id="map" style="height:400px; border-radius:12px;"></div>
+</div>
+
+<div class="card">
+    <h2>System Usage</h2>
+    <p>Total Scans: <span id="scanCount">0</span></p>
+    <p>Total Chats: <span id="chatCount">0</span></p>
+    <button onclick="loadUsage()">Refresh Stats</button>
+    <button onclick="resetData()" style="background:#ef4444;">Reset Logs</button>
+</div>
+
+<div id="chat-widget-button" onclick="toggleChat()">🤖</div>
+
+<div id="chat-window" class="card">
+    <div class="chat-header">
+        <span>PhishGuard AI</span>
+        <span style="cursor:pointer" onclick="toggleChat()">✖</span>
+    </div>
+    <div id="chatBox">
+        <div class="msg bot-msg">Hello! I'm your Security Detective. How can I help?</div>
+    </div>
+    <div class="chat-input-area">
+        <input id="chatInput" placeholder="Ask a question..." onkeypress="if(event.key==='Enter') sendChat()">
+        <button onclick="sendChat()">Send</button>
+    </div>
+</div>
+
+<script>
+
+let myChart;
+let leafletMap;
+let marker;
+
+window.onload = function(){
+
+    // Chart Setup
+    const ctx = document.getElementById("chartCanvas").getContext('2d');
+
+    myChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: ["Email Phishing", "URL Phishing", "Spear Phishing", "Whaling", "Clone Phishing"],
+            datasets: [{
+                label: "Detections",
+                data: [0,0,0,0,0],
+                backgroundColor: '#3b82f6'
+            }]
+        },
+        options: {
+            scales: {
+                y: { beginAtZero:true, ticks:{color:'white'} },
+                x: { ticks:{color:'white'} }
+            },
+            plugins: { legend:{ labels:{color:'white'} } }
+        }
+    });
+
+    // Leaflet Map Setup
+    leafletMap = L.map('map').setView([20,0],2);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        attribution:'&copy; OpenStreetMap contributors'
+    }).addTo(leafletMap);
+
+    loadUsage();
+};
+
+function speak(text){
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.lang="en-US";
+    window.speechSynthesis.speak(speech);
+}
+
+function analyze(){
+
+    const combinedText =
+        document.getElementById("email").value + " " +
+        document.getElementById("spear").value + " " +
+        document.getElementById("whaling").value + " " +
+        document.getElementById("clone").value;
+
+    fetch("http://127.0.0.1:8000/analyze",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({
+            email:combinedText,
+            sender:document.getElementById("sender").value,
+            url:document.getElementById("url").value
+        })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+
+        let locInfo="No location found";
+        if(data.location){
+            locInfo=`📍 ${data.location.city}, ${data.location.country} (${data.location.isp})`;
+        }
+
+        document.getElementById("result").innerHTML=`
+            <div class="info-box">
+                <b>Status:</b> ${data.result==="Legitimate"?"✅":"🚨"} 
+                <span class="${data.result==="Legitimate"?"safe":"danger"}">${data.result}</span><br>
+                <b>Category:</b> ${data.category}<br>
+                <b>Risk Level:</b> ${data.risk_level}<br>
+                <b>Confidence:</b> ${data.confidence}<br>
+                <hr>
+                <b>IP:</b> ${data.resolved_ip || "Not Found"}<br>
+                <b>Location:</b> ${locInfo}<br>
+                <hr>
+                <b>Analysis:</b> ${data.analysis.join(", ")}
+            </div>
+        `;
+
+        speak(data.result + ". Risk is " + data.risk_level);
+        loadUsage();
+
+        // MAP UPDATE
+        if(data.location && data.location.lat && data.location.lon){
+
+            if(marker){
+                leafletMap.removeLayer(marker);
+            }
+
+            leafletMap.setView([data.location.lat, data.location.lon],6);
+
+            marker=L.marker([data.location.lat,data.location.lon])
+                .addTo(leafletMap)
+                .bindPopup(`
+                    <b>🚨 Possible Attacker</b><br>
+                    📍 ${data.location.city}, ${data.location.country}<br>
+                    🌐 ISP: ${data.location.isp}
+                `)
+                .openPopup();
+        }
+
+    })
+    .catch(err=>alert("Backend error: "+err));
+}
+
+function loadUsage(){
+    fetch("http://127.0.0.1:8000/usage")
+    .then(res=>res.json())
+    .then(data=>{
+        document.getElementById("scanCount").innerText=data.total_scans;
+        document.getElementById("chatCount").innerText=data.total_chats;
+
+        myChart.data.datasets[0].data=[
+            data.categories["Email Phishing"]||0,
+            data.categories["URL Phishing"]||0,
+            data.categories["Spear Phishing"]||0,
+            data.categories["Whaling"]||0,
+            data.categories["Clone Phishing"]||0
+        ];
+        myChart.update();
+    });
+}
+
+function resetData(){
+    fetch("http://127.0.0.1:8000/reset",{method:"DELETE"})
+    .then(res=>res.json())
+    .then(data=>{
+        alert(data.message);
+        loadUsage();
+        document.getElementById("result").innerHTML="";
+    });
+}
+
+function sendChat(){
+    const input=document.getElementById("chatInput");
+    const msg=input.value;
+    if(!msg) return;
+
+    const chatBox=document.getElementById("chatBox");
+    chatBox.innerHTML+=`<div class="msg user-msg"><b>You:</b> ${msg}</div>`;
+
+    fetch("http://127.0.0.1:8000/chat",{
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({message:msg})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        chatBox.innerHTML+=`<div class="msg bot-msg"><b>PhishGuard:</b> ${data.reply}</div>`;
+        chatBox.scrollTop=chatBox.scrollHeight;
+        speak(data.reply);
+        input.value="";
+    });
+}
+function toggleChat() {
+    const chatWin = document.getElementById("chat-window");
+    if (chatWin.style.display === "none" || chatWin.style.display === "") {
+        chatWin.style.display = "flex";
+        document.getElementById("chatInput").focus();
+    } else {
+        chatWin.style.display = "none";
+    }
+}
+
+// Ensure sendChat is updated to clear the input correctly
+function sendChat(){
+    const input = document.getElementById("chatInput");
+    const msg = input.value;
+    if(!msg) return;
+
+    const chatBox = document.getElementById("chatBox");
+    chatBox.innerHTML += `<div class="msg user-msg"><b>You:</b> ${msg}</div>`;
+    input.value = ""; // Clear immediately for better UX
+
+    fetch("http://127.0.0.1:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({message: msg})
+    })
+    .then(res => res.json())
+    .then(data => {
+        chatBox.innerHTML += `<div class="msg bot-msg"><b>PhishGuard:</b> ${data.reply}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+        speak(data.reply);
+    })
+    .catch(err => {
+        chatBox.innerHTML += `<div class="msg bot-msg" style="background:#ef4444"><b>Error:</b> Could not connect to AI.</div>`;
+    });
+}
+
+</script>
+<div style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:-1;">
+    <div style="position:absolute;width:300px;height:300px;background:#3b82f6;border-radius:50%;filter:blur(150px);top:10%;left:10%;animation:float 10s infinite alternate;"></div>
+</div>
+
+<style>
+@keyframes float{
+    from{transform:translateY(0);}
+    to{transform:translateY(50px);}
+}
+</style>
+
+</body>
+</html>
